@@ -1,7 +1,62 @@
+"use client";
+
+import { useState } from "react";
+
 export default function Home() {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [randomPlayer, setRandomPlayer] = useState<string | null>(null);
+
+  async function handleMakeRequest() {
+    setLoading(true);
+    console.log("Calling...");
+    const startJobResponse = await fetch(
+      "http://localhost:8000/update-statistics",
+    );
+    const startJobResult = (await startJobResponse.json()) as {
+      status: string;
+      job_id: string;
+    };
+    console.log("Job started, waiting until job is complete");
+
+    const job_id = startJobResult.job_id;
+
+    let job_status = "executing";
+    while (job_status != "complete") {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const jobStatusResponse = await fetch(
+        `http://localhost:8000/job-status/${job_id}`,
+      );
+      const jobStatusResult = (await jobStatusResponse.json()) as {
+        status: string;
+        job_status: string;
+      };
+      job_status = jobStatusResult.job_status;
+    }
+    console.log("job complete, getting random player");
+
+    const randomPlayerResponse = await fetch(
+      "http://localhost:8000/random-player",
+    );
+    const randomPlayerResult = (await randomPlayerResponse.json()) as {
+      status: string;
+      player: string;
+    };
+    setRandomPlayer(randomPlayerResult.player);
+
+    setLoading(false);
+  }
+
   return (
     <div>
       <h1>Waiver Watcher</h1>
+      <button
+        className="bg-white text-black rounded-2xl px-2 cursor-pointer disabled:bg-gray-600"
+        onClick={handleMakeRequest}
+        disabled={loading}
+      >
+        Make request
+      </button>
+      {randomPlayer && <p>{randomPlayer}</p>}
     </div>
   );
 }

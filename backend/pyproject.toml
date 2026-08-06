@@ -3,5 +3,8 @@ name = "backend"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "dotenv>=0.9.9",
     "fastapi[standard]>=0.140.13",
+    "pika>=1.4.2",
+    "psycopg2>=2.9.12",
 ]

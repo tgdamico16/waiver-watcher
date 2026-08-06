@@ -1,18 +1,17 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16
     container_name: waiver_watcher_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: waiver_watcher
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db_schema.sql:/docker-entrypoint-initdb.d/init.sql
 
   rabbitmq:
     image: rabbitmq:3.13-management
@@ -20,42 +19,43 @@ services:
     restart: unless-stopped
     ports:
       - "15672:15672"
+      - "5672:5672"
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: waiver_watcher_backend
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql://admin:admin@postgres:5432/fantasy_football
-      RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672/
-    ports:
-      - "8000:8000"
-    depends_on:
-      - postgres
-      - rabbitmq
-    volumes:
-      - ./backend:/app
+#   backend:
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
+#     container_name: waiver_watcher_backend
+#     restart: unless-stopped
+#     environment:
+#       DATABASE_URL: postgresql://admin:admin@postgres:5432/fantasy_football
+#       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672/
+#     ports:
+#       - "8000:8000"
+#     depends_on:
+#       - postgres
+#       - rabbitmq
+#     volumes:
+#       - ./backend:/app
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: waiver_watcher_frontend
-    restart: unless-stopped
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+#   frontend:
+#     build:
+#       context: ./frontend
+#       dockerfile: Dockerfile
+#     container_name: waiver_watcher_frontend
+#     restart: unless-stopped
+#     environment:
+#       NEXT_PUBLIC_API_URL: http://localhost:8000
+#     ports:
+#       - "3000:3000"
+#     depends_on:
+#       - backend
+#     volumes:
+#       - ./frontend:/app
+#       - /app/node_modules
 
-volumes:
-  postgres_data:
+# volumes:
+#   postgres_data:
