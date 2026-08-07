@@ -1,5 +1,6 @@
 import os
 import random
+import time
 
 from dotenv import load_dotenv
 import psycopg2
@@ -28,13 +29,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-connection = psycopg2.connect(
-    host="localhost",
-    port=5432,
-    database="waiver_watcher",
-    user=DB_USER,
-    password=DB_PASSWORD,
-)
+
+def get_db_connection_with_retries():
+    while True:
+        try:
+            print("attempting to connect to db")
+            connection = psycopg2.connect(
+                host="waiver_watcher_postgres",
+                port=5432,
+                database="waiver_watcher",
+                user=DB_USER,
+                password=DB_PASSWORD,
+            )
+            return connection
+        except:
+            time.sleep(2)
+
+
+connection = get_db_connection_with_retries()
 cursor = connection.cursor()
 
 
@@ -49,7 +61,7 @@ async def update_statistics():
         job_id = send_message_to_data_collector()
         return {"status": "success", "job_id": job_id}
     except Exception as e:
-        return {"status": "error", "error": e}
+        return {"status": "error", "error": str(e)}
 
 
 @app.get("/job-status/{job_id}")
@@ -59,7 +71,7 @@ async def get_job_status(job_id: str):
         row = cursor.fetchone()
         return {"status": "success", "job_status": row[1]}
     except Exception as e:
-        return {"status": "error", "error": e}
+        return {"status": "error", "error": str(e)}
 
 
 @app.get("/random-player")
@@ -74,7 +86,7 @@ async def get_random_player():
     except Exception as e:
         print(rows)
         print(e)
-        return {"status": "error", "error": e}
+        return {"status": "error", "error": str(e)}
 
 
 if __name__ == "__main__":

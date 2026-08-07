@@ -24,38 +24,49 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
 
-#   backend:
-#     build:
-#       context: ./backend
-#       dockerfile: Dockerfile
-#     container_name: waiver_watcher_backend
-#     restart: unless-stopped
-#     environment:
-#       DATABASE_URL: postgresql://admin:admin@postgres:5432/fantasy_football
-#       RABBITMQ_URL: amqp://admin:admin@rabbitmq:5672/
-#     ports:
-#       - "8000:8000"
-#     depends_on:
-#       - postgres
-#       - rabbitmq
-#     volumes:
-#       - ./backend:/app
+  backend:
+    container_name: waiver_watcher_backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+    depends_on:
+      - postgres
+      - rabbitmq
 
-#   frontend:
-#     build:
-#       context: ./frontend
-#       dockerfile: Dockerfile
-#     container_name: waiver_watcher_frontend
-#     restart: unless-stopped
-#     environment:
-#       NEXT_PUBLIC_API_URL: http://localhost:8000
-#     ports:
-#       - "3000:3000"
-#     depends_on:
-#       - backend
-#     volumes:
-#       - ./frontend:/app
-#       - /app/node_modules
+  frontend:
+    container_name: waiver_watcher_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+      - data_collector
 
-# volumes:
-#   postgres_data:
+
+  data_collector:
+    container_name: waiver_watcher_data_collector
+    build:
+      context: ./data-collector
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      API_KEY: ${API_KEY}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+    depends_on:
+      - postgres
+      - rabbitmq
+
+volumes:
+  postgres_data:

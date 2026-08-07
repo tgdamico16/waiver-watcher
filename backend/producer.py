@@ -1,4 +1,5 @@
 import os
+import time
 
 from dotenv import load_dotenv
 import pika
@@ -10,17 +11,22 @@ RABBIT_USER = os.getenv("RABBIT_USER")
 RABBIT_PASSWORD = os.getenv("RABBIT_PASSWORD")
 
 
-def get_rabbitmq_channel():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(
-            host="localhost",
-            credentials=pika.PlainCredentials(RABBIT_USER, RABBIT_PASSWORD),
-        )
-    )
-    return connection.channel()
+def get_rabbitmq_channel_with_retries():
+    while True:
+        try:
+            print("attempting to connect to rabbit")
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(
+                    host="waiver_watcher_rabbitmq",
+                    credentials=pika.PlainCredentials(RABBIT_USER, RABBIT_PASSWORD),
+                )
+            )
+            return connection.channel()
+        except Exception:
+            time.sleep(2)
 
 
-channel = get_rabbitmq_channel()
+channel = get_rabbitmq_channel_with_retries()
 channel.queue_declare(queue="update_statistics", durable=True)
 
 

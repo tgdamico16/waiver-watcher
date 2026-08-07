@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import time
 from typing import Dict
 
 import uuid
@@ -18,13 +19,23 @@ DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 
-connection = psycopg2.connect(
-    host="localhost",
-    port=5432,
-    database="waiver_watcher",
-    user=DB_USER,
-    password=DB_PASSWORD,
-)
+def get_db_connection_with_retries():
+    while True:
+        try:
+            print("attempting to connect to db")
+            connection = psycopg2.connect(
+                host="waiver_watcher_postgres",
+                port=5432,
+                database="waiver_watcher",
+                user=DB_USER,
+                password=DB_PASSWORD,
+            )
+            return connection
+        except:
+            time.sleep(2)
+
+
+connection = get_db_connection_with_retries()
 cursor = connection.cursor()
 
 
