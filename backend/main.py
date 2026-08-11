@@ -16,9 +16,11 @@ load_dotenv()
 
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
+SERVER_HOST = os.getenv("SERVER_HOST")
 
 origins = [
     "http://localhost:3000",
+    f"http://{SERVER_HOST}",
 ]
 
 app.add_middleware(
