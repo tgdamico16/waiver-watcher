@@ -1,6 +1,6 @@
 "use server";
 
-const API_HOST = "localhost:8000";
+const API_HOST = "waiver_watcher_backend:8000";
 
 export async function startJob(): Promise<string> {
   const response = await fetch(`http://${API_HOST}/update-statistics`);
