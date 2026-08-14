@@ -30,7 +30,7 @@ def get_db_connection_with_retries():
             time.sleep(2)
 
 
-def get_rabbitmq_channel_with_retries():
+def get_rabbitmq_connection_with_retries():
     while True:
         try:
             print("attempting to connect to rabbit")
@@ -41,6 +41,6 @@ def get_rabbitmq_channel_with_retries():
                 )
             )
             print("connected to rabbit")
-            return connection.channel()
+            return connection
         except Exception:
             time.sleep(2)

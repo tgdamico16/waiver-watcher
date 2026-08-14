@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from util import (
     get_db_connection_with_retries,
-    get_rabbitmq_channel_with_retries,
+    get_rabbitmq_connection_with_retries,
     send_message_to_data_collector,
 )
 
@@ -23,9 +23,8 @@ async def lifespan(app: FastAPI):
     connection = get_db_connection_with_retries()
     app.state.postgres_connection = connection
 
-    channel = get_rabbitmq_channel_with_retries()
-    channel.queue_declare(queue="update_statistics", durable=True)
-    app.state.rabbitmq_channel = channel
+    connection = get_rabbitmq_connection_with_retries()
+    app.state.rabbitmq_connection = connection
     yield
 
 
@@ -53,8 +52,8 @@ async def health_check():
 @app.get("/update-statistics")
 async def update_statistics(request: Request):
     try:
-        channel = request.app.state.rabbitmq_channel
-        job_id = send_message_to_data_collector(channel)
+        connection = request.app.state.rabbitmq_connection
+        job_id = send_message_to_data_collector(connection)
         return {"status": "success", "job_id": job_id}
     except Exception as e:
         return {"status": "error", "error": str(e)}
