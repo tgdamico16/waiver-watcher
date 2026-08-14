@@ -28,8 +28,10 @@ def test_update_statistics():
 
 def test_get_job_status():
     mock_cursor = MagicMock()
+    mock_connection = MagicMock()
+    mock_connection.cursor.return_value = mock_cursor
     mock_cursor.fetchone.return_value = ("", "complete")
-    app.state.postgres_cursor = mock_cursor
+    app.state.postgres_connection = mock_connection
 
     test_job_id = str(uuid.uuid4())
     response = client.get(f"/job-status/{test_job_id}")
