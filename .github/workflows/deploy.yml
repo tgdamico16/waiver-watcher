@@ -1,12 +1,64 @@
-name: Deploy to Hetzner Server
+name: Deploy to Server
 
 on:
   push:
     branches: ["main"]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+
+      # Test backend
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run backend unit tests
+        working-directory: backend
+        run: pytest -qs
+
+      # Test data collector
+      - name: Install data collector dependencies
+        working-directory: data-collector
+        run: pip install -r requirements.txt
+
+      - name: Run data collector unit tests
+        working-directory: data-collector
+        run: pytest -qs
+
+      # Test frontend
+      - name: Set up node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "24"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend unit tests
+        working-directory: frontend
+        run: npm test -- --ci
+
+      # Integration tests
+      - name: Build integration test containers
+        run: docker compose -f docker-compose.test.yml build
+      - name: Run integration tests
+        run: docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from tests
+
   deploy:
     runs-on: ubuntu-latest
+    needs: test
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
