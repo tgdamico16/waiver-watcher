@@ -17,18 +17,7 @@ load_dotenv()
 
 SERVER_HOST = os.getenv("SERVER_HOST")
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    connection = get_db_connection_with_retries()
-    app.state.postgres_connection = connection
-
-    connection = get_rabbitmq_connection_with_retries()
-    app.state.rabbitmq_connection = connection
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 origins = [
     "http://localhost:3000",
@@ -50,9 +39,9 @@ async def health_check():
 
 
 @app.get("/update-statistics")
-async def update_statistics(request: Request):
+async def update_statistics():
     try:
-        connection = request.app.state.rabbitmq_connection
+        connection = get_rabbitmq_connection_with_retries()
         job_id = send_message_to_data_collector(connection)
         return {"status": "success", "job_id": job_id}
     except Exception as e:
@@ -60,9 +49,9 @@ async def update_statistics(request: Request):
 
 
 @app.get("/job-status/{job_id}")
-async def get_job_status(job_id: str, request: Request):
+async def get_job_status(job_id: str):
     try:
-        connection = request.app.state.postgres_connection
+        connection = get_db_connection_with_retries()
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
         row = cursor.fetchone()
@@ -73,9 +62,9 @@ async def get_job_status(job_id: str, request: Request):
 
 
 @app.get("/random-player")
-async def get_random_player(request: Request):
+async def get_random_player():
     try:
-        connection = request.app.state.postgres_connection
+        connection = get_db_connection_with_retries()
         cursor = connection.cursor()
         cursor.execute("SELECT * FROM player_projections")
         rows = cursor.fetchall()
