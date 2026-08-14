@@ -15,7 +15,9 @@ def test_health_check():
 
 def test_update_statistics():
     mock_channel = MagicMock()
-    app.state.rabbitmq_channel = mock_channel
+    mock_connection = MagicMock()
+    mock_connection.channel.return_value = mock_channel
+    app.state.rabbitmq_connection = mock_connection
 
     response = client.get("/update-statistics")
 
