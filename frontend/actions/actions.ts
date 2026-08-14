@@ -26,13 +26,13 @@ export async function startJob(): Promise<string> {
 
 export async function getJobStatus(
   jobId: string,
-): Promise<"executing" | "complete"> {
+): Promise<"nonexistent" | "executing" | "complete"> {
   const response = await fetch(`http://${API_HOST}/job-status/${jobId}`);
 
   const result = (await response.json()) as
     | {
         status: string;
-        job_status: "executing" | "complete";
+        job_status: "nonexistent" | "executing" | "complete";
       }
     | {
         status: string;

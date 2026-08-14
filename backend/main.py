@@ -21,8 +21,7 @@ SERVER_HOST = os.getenv("SERVER_HOST")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     connection = get_db_connection_with_retries()
-    cursor = connection.cursor()
-    app.state.postgres_cursor = cursor
+    app.state.postgres_connection = connection
 
     channel = get_rabbitmq_channel_with_retries()
     channel.queue_declare(queue="update_statistics", durable=True)
@@ -64,10 +63,12 @@ async def update_statistics(request: Request):
 @app.get("/job-status/{job_id}")
 async def get_job_status(job_id: str, request: Request):
     try:
-        cursor = request.app.state.postgres_cursor
+        connection = request.app.state.postgres_connection
+        cursor = connection.cursor()
         cursor.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
         row = cursor.fetchone()
-        return {"status": "success", "job_status": row[1]}
+        status = row[1] if row is not None else "nonexistent"
+        return {"status": "success", "job_status": status}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
@@ -75,7 +76,8 @@ async def get_job_status(job_id: str, request: Request):
 @app.get("/random-player")
 async def get_random_player(request: Request):
     try:
-        cursor = request.app.state.postgres_cursor
+        connection = request.app.state.postgres_connection
+        cursor = connection.cursor()
         cursor.execute("SELECT * FROM player_projections")
         rows = cursor.fetchall()
         randomPlayerIndex = random.randint(0, len(rows) - 1)

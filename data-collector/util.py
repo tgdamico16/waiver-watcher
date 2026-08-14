@@ -24,6 +24,7 @@ def get_db_connection_with_retries():
                 user=DB_USER,
                 password=DB_PASSWORD,
             )
+            print("connected to db")
             return connection
         except:
             time.sleep(2)
@@ -39,6 +40,7 @@ def get_rabbitmq_channel_with_retries():
                     credentials=pika.PlainCredentials(RABBIT_USER, RABBIT_PASSWORD),
                 )
             )
+            print("connected to rabbit")
             return connection.channel()
         except Exception:
             time.sleep(2)

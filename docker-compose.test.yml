@@ -1,0 +1,67 @@
+services:
+  postgres_test:
+    image: postgres:16
+    container_name: waiver_watcher_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: waiver_watcher
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db_schema.sql:/docker-entrypoint-initdb.d/init.sql
+
+  rabbitmq_test:
+    image: rabbitmq:3.13-management
+    container_name: waiver_watcher_rabbitmq
+    restart: unless-stopped
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: username
+      RABBITMQ_DEFAULT_PASS: password
+
+  backend_test:
+    container_name: waiver_watcher_backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DB_USER: username
+      DB_PASSWORD: password
+      RABBIT_USER: username
+      RABBIT_PASSWORD: password
+    depends_on:
+      - postgres_test
+      - rabbitmq_test
+
+  data_collector_test:
+    container_name: waiver_watcher_data_collector
+    build:
+      context: ./data-collector
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      API_KEY: ${API_KEY}
+      DB_USER: username
+      DB_PASSWORD: password
+      RABBIT_USER: username
+      RABBIT_PASSWORD: password
+    depends_on:
+      - postgres_test
+      - rabbitmq_test
+
+  integration_tests:
+    container_name: waiver_watcher_integration_tests
+    build: ./integration-tests
+    depends_on:
+      - backend_test
+      - data_collector_test
+
+volumes:
+  postgres_data:
