@@ -28,10 +28,9 @@ export default function Home() {
       setRandomPlayer(randomPlayer);
     } catch (e) {
       setError(String(e));
+    } finally {
       setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (
@@ -41,10 +40,11 @@ export default function Home() {
         className="bg-white text-black rounded-2xl px-2 cursor-pointer disabled:bg-gray-600"
         onClick={handleMakeRequest}
         disabled={loading}
+        data-testid="make-request-button"
       >
         Make request
       </button>
-      {randomPlayer && <p>{randomPlayer}</p>}
+      <p data-testid="random-player-display">{randomPlayer}</p>
       {error && <p>{error}</p>}
     </div>
   );

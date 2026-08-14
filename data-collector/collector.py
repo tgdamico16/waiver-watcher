@@ -1,14 +1,10 @@
 import base64
-import json
 import os
-import time
 from typing import Dict
 
-import uuid
 from dotenv import load_dotenv
 import requests
 
-import psycopg2
 from psycopg2.extras import execute_values
 
 load_dotenv()
