@@ -48,7 +48,7 @@ export function ParameterSelectors({
   setSeason,
 }: ParameterSelectorsProps) {
   return (
-    <div className="flex flex-col gap-2 border-t border-b py-3 border-white w-72">
+    <div className="flex flex-col gap-2 border-t border-b py-3 border-white w-74">
       <div className="flex gap-1 items-center">
         <p>Show me the top 10</p>
         <Select
@@ -58,7 +58,7 @@ export function ParameterSelectors({
             setPosition(newValue ?? POSITIONS[0].value)
           }
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-16">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -80,7 +80,7 @@ export function ParameterSelectors({
           value={week}
           onValueChange={(newValue) => setWeek(newValue ?? WEEKS[0].value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-14">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -101,7 +101,7 @@ export function ParameterSelectors({
           value={season}
           onValueChange={(newValue) => setSeason(newValue ?? SEASONS[0].value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-30">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
