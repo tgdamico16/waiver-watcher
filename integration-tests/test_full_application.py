@@ -1,14 +1,14 @@
 import time
-from typing import Dict
+from typing import Dict, Union
 
 import requests
 
 BACKEND_HOST = "waiver_watcher_backend:8000"
 
 
-def hit_backend(endpoint: str) -> Dict:
+def hit_backend(endpoint: str, params: Union[Dict, None] = None) -> Dict:
     backend_api_url = f"http://{BACKEND_HOST}/{endpoint}"
-    response = requests.get(backend_api_url)
+    response = requests.get(backend_api_url, params=params)
     print(f"hit backend, response: {response.json()}")
     return response.json()
 
@@ -30,7 +30,8 @@ def test_full_application():
     print("backend started")
 
     print("starting job")
-    job_start_response = hit_backend("update-statistics")
+    params = {"position": "qb", "week": "1", "season": "2026-2027-regular"}
+    job_start_response = hit_backend("start-job", params)
     print("job started")
 
     job_id = job_start_response["job_id"]
@@ -46,9 +47,9 @@ def test_full_application():
         query_count += 1
         print(f"queried job status {query_count} times")
 
-    print("job complete, getting random player")
-    random_player_response = hit_backend("random-player")
-    random_player = random_player_response["player"]
-    print("got random player")
+    print("job complete, getting top 10 players")
+    top_10_players_response = hit_backend("top-10-players")
+    top_10_players = top_10_players_response["players"]
+    print("got top 10 players")
 
-    assert "QB" in random_player
+    assert len(top_10_players) == 10 and "projected_points" in top_10_players[0]

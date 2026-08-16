@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 from unittest.mock import MagicMock, patch
 import uuid
@@ -16,7 +17,6 @@ from collector import (
 load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
-FANTASY_STATS_API_URL = "https://api.mysportsfeeds.com/v2.1/pull/nfl/2026-2027-regular/week/1/dfs_projections.json"
 
 test_fantasy_stats = {
     "lastUpdatedOn": "2026-08-05T22:51:26.795Z",
@@ -52,15 +52,21 @@ def test_callback():
     testTag = "testtag"
     ch = MagicMock()
     method = MagicMock()
+    jobId = str(uuid.uuid4())
+    messageObj = {
+        "job_id": jobId,
+        "position": "qb",
+        "week": "1",
+        "season": "2026-2027-regular",
+    }
+    body = json.dumps(messageObj).encode()
     db_connection = MagicMock()
     method.delivery_tag = testTag
 
     with patch("consumer.update_statistics") as mock_update:
-        jobId = str(uuid.uuid4()).encode()
+        callback(ch, method, None, body, db_connection)
 
-        callback(ch, method, None, jobId, db_connection)
-
-        mock_update.assert_called_once_with(jobId.decode(), db_connection)
+        mock_update.assert_called_once_with(messageObj, db_connection)
         ch.basic_ack.assert_called_once_with(delivery_tag=testTag)
 
 
@@ -114,18 +120,21 @@ def test_save_data_to_database():
 
 
 def test_get_fantasy_stats():
+    position = "qb"
+    week = "1"
+    season = "2026-2027-regular"
     with patch("collector.requests.get") as mock_get_request:
         mock_json_return_value = MagicMock()
         mock_json_return_value.json.return_value = test_fantasy_stats
         mock_get_request.return_value = mock_json_return_value
 
-        result = get_fantasy_stats()
+        result = get_fantasy_stats(position, week, season)
 
         credentials = base64.b64encode(f"{API_KEY}:MYSPORTSFEEDS".encode()).decode(
             "utf-8"
         )
         mock_get_request.assert_called_once_with(
-            FANTASY_STATS_API_URL,
+            f"https://api.mysportsfeeds.com/v2.1/pull/nfl/{season}/week/{week}/dfs_projections.json",
             params={"position": "qb"},
             headers={"Authorization": "Basic " + credentials},
         )
@@ -141,12 +150,20 @@ def test_update_statistics() -> None:
         "collector.mark_job_complete"
     ) as mock_mark_job_complete:
         jobId = str(uuid.uuid4())
+        message = {
+            "job_id": jobId,
+            "position": "qb",
+            "week": "1",
+            "season": "2026-2027-regular",
+        }
         connection = MagicMock()
 
-        update_statistics(jobId, connection)
+        update_statistics(message, connection)
 
         mock_create_job.assert_called_once_with(jobId, connection)
-        mock_get_fantasy_stats.assert_called_once()
+        mock_get_fantasy_stats.assert_called_once_with(
+            message["position"], message["week"], message["season"]
+        )
         mock_save_data_to_database.assert_called_once_with(
             mock_get_fantasy_stats.return_value, connection
         )
