@@ -1,4 +1,5 @@
 from functools import partial
+import json
 import os
 import time
 
@@ -14,12 +15,15 @@ RABBIT_PASSWORD = os.getenv("RABBIT_PASSWORD")
 
 def callback(ch, method, properties, body, db_connection):
     try:
-        job_id = body.decode()
-        update_statistics(job_id, db_connection)
+        messageJson = body.decode()
+        messageObj = json.loads(messageJson)
+        print(messageObj)
+        update_statistics(messageObj, db_connection)
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except Exception as e:
-        print(f"Error during callback: {str(e)}")
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+        print(f"Error during callback: {e}")
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+        raise e
 
 
 def consume_loop():

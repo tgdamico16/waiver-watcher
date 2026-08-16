@@ -1,9 +1,29 @@
 "use server";
 
+// const API_HOST = "localhost:8000";
 const API_HOST = "waiver_watcher_backend:8000";
 
-export async function startJob(): Promise<string> {
-  const response = await fetch(`http://${API_HOST}/update-statistics`);
+export type Player = {
+  id: number;
+  first_name: string;
+  last_name: string;
+  position: string;
+  team: string;
+  projected_points: number;
+};
+
+export async function startJob(
+  position: string,
+  week: string,
+  season: string,
+): Promise<string> {
+  console.log("Starting Job");
+
+  const params = new URLSearchParams();
+  params.append("position", position);
+  params.append("week", week);
+  params.append("season", season);
+  const response = await fetch(`http://${API_HOST}/start-job?${params}`);
   const result = (await response.json()) as
     | {
         status: string;
@@ -47,12 +67,12 @@ export async function getJobStatus(
   return result.job_status;
 }
 
-export async function getRandomPlayer(): Promise<string> {
-  const response = await fetch(`http://${API_HOST}/random-player`);
+export async function getTop10Players(): Promise<Player[]> {
+  const response = await fetch(`http://${API_HOST}/top-10-players`);
   const result = (await response.json()) as
     | {
         status: string;
-        player: string;
+        players: Player[];
       }
     | {
         status: string;
@@ -63,5 +83,5 @@ export async function getRandomPlayer(): Promise<string> {
     console.error(result.error);
     throw new Error(result.error);
   }
-  return result.player;
+  return result.players;
 }

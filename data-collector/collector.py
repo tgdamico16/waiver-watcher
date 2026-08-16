@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 from typing import Dict
 
@@ -10,7 +11,10 @@ from psycopg2.extras import execute_values
 load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
-FANTASY_STATS_API_URL = "https://api.mysportsfeeds.com/v2.1/pull/nfl/2026-2027-regular/week/1/dfs_projections.json"
+
+
+def get_api_url(week: str, season: str):
+    return f"https://api.mysportsfeeds.com/v2.1/pull/nfl/{season}/week/{week}/dfs_projections.json"
 
 
 def create_job(job_id: str, connection) -> None:
@@ -64,20 +68,32 @@ def save_data_to_database(fantasy_stats: Dict, connection) -> None:
     print("data saved to database")
 
 
-def get_fantasy_stats() -> Dict:
+def get_fantasy_stats(position: str, week: str, season: str) -> Dict:
     credentials = base64.b64encode(f"{API_KEY}:MYSPORTSFEEDS".encode()).decode("utf-8")
     print("Calling api...")
     response = requests.get(
-        FANTASY_STATS_API_URL,
-        params={"position": "qb"},
+        get_api_url(week, season),
+        params={"position": position},
         headers={"Authorization": "Basic " + credentials},
     )
     print("API returned")
     return response.json()
 
 
-def update_statistics(job_id: str, connection) -> None:
-    create_job(job_id, connection)
-    fantasy_stats = get_fantasy_stats()
+def update_statistics(message: Dict, connection) -> None:
+    create_job(message["job_id"], connection)
+    fantasy_stats = get_fantasy_stats(
+        message["position"], message["week"], message["season"]
+    )
     save_data_to_database(fantasy_stats, connection)
-    mark_job_complete(job_id, connection)
+    mark_job_complete(message["job_id"], connection)
+
+
+def test_api():
+    response = get_fantasy_stats("qb", "1", "2025-2026-regular")
+    with open("output.json", "w") as f:
+        json.dump(response, f, indent=2)
+
+
+if __name__ == "__main__":
+    test_api()
