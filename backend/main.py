@@ -1,10 +1,4 @@
-from contextlib import asynccontextmanager
-import os
-import random
-
-from dotenv import load_dotenv
-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from util import (
@@ -12,10 +6,6 @@ from util import (
     get_rabbitmq_connection_with_retries,
     send_message_to_data_collector,
 )
-
-load_dotenv()
-
-SERVER_HOST = os.getenv("SERVER_HOST")
 
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
@@ -30,10 +20,7 @@ SERVER_HOST = os.getenv("SERVER_HOST")
 # app = FastAPI(lifespan=lifespan)
 app = FastAPI()
 
-origins = [
-    "http://localhost:3000",
-    f"http://{SERVER_HOST}",
-]
+origins = ["http://localhost:3000"]
 
 app.add_middleware(
     CORSMiddleware,
