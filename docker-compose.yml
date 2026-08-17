@@ -80,5 +80,18 @@ services:
     depends_on:
       - frontend
 
+
+  health_checker:
+    container_name: waiver_watcher_health_checker
+    build:
+      context: ./health-checker
+      dockerfile: Dockerfile
+    environment:
+      EMAIL: ${EMAIL}
+      GOOGLE_APP_PASSWORD: ${GOOGLE_APP_PASSWORD}
+    depends_on:
+      - frontend
+      - backend
+
 volumes:
   postgres_data:
