@@ -29,21 +29,25 @@ def send_alert():
 
 
 def check_health():
-    try:
-        response = requests.get(FRONTEND_HEALTH_URL)
-        if response.status_code != 200:
-            raise Exception("Health check failed")
-        else:
-            print(f"{datetime.now()} Healthy")
-    except Exception as e:
-        send_alert()
-        raise e
+    response = requests.get(FRONTEND_HEALTH_URL)
+    if response.status_code != 200:
+        raise Exception("Health check failed")
+    else:
+        print(f"{datetime.now()} Healthy")
 
 
 def main():
+    consecutive_failures = 0
     while True:
         time.sleep(60)
-        check_health()
+        try:
+            check_health()
+            consecutive_failures = 0
+        except Exception as e:
+            consecutive_failures += 1
+            if consecutive_failures >= 5:
+                send_alert()
+                raise e
 
 
 if __name__ == "__main__":
