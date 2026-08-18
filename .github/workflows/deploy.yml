@@ -80,5 +80,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /waiver-watcher
+            docker compose down -v
             docker compose pull
             docker compose up -d --build
