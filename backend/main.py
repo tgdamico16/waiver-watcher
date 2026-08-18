@@ -37,6 +37,7 @@ app.add_middleware(
 @app.get("/health")
 # async def health_check(request: Request):
 async def health_check():
+    print("Health check")
     try:
         # rabbit_connection = request.app.state.rabbitmq_connection
         # postgres_connection = request.app.state.postgres_connection
@@ -50,9 +51,13 @@ async def health_check():
             cursor.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
             row = cursor.fetchone()
             if row is not None:
+                print("Healthy")
                 return {"status": "healthy"}
+        print("Unhealthy, job never created")
         return {"status": "unhealthy"}
-    except Exception:
+    except Exception as e:
+        print("Unhealthy, error")
+        print(e)
         return {"status": "unhealthy"}
 
 
