@@ -50,10 +50,18 @@ def get_rabbitmq_connection_with_retries():
             time.sleep(2)
 
 
-def send_message_to_data_collector(connection, position: str, week: str, season: str):
+def send_message_to_data_collector(
+    connection, position: str, week: str, season: str, test: bool = False
+):
     job_id = str(uuid.uuid4())
     message = json.dumps(
-        {"job_id": job_id, "position": position, "week": week, "season": season}
+        {
+            "job_id": job_id,
+            "position": position,
+            "week": week,
+            "season": season,
+            "test": test,
+        }
     )
 
     channel = connection.channel()

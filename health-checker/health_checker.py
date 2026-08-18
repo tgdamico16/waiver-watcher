@@ -42,8 +42,8 @@ def check_health():
 
 def main():
     while True:
-        check_health()
         time.sleep(60)
+        check_health()
 
 
 if __name__ == "__main__":

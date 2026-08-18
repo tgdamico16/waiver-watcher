@@ -61,6 +61,7 @@ def test_callback():
         "position": "qb",
         "week": "1",
         "season": "2026-2027-regular",
+        "test": False,
     }
     body = json.dumps(messageObj).encode()
     db_connection = MagicMock()
@@ -243,7 +244,7 @@ def test_get_fantasy_stats():
         assert result == test_fantasy_stats
 
 
-def test_update_statistics() -> None:
+def test_update_statistics_health_check() -> None:
     with patch("collector.create_job") as mock_create_job, patch(
         "collector.get_fantasy_stats"
     ) as mock_get_fantasy_stats, patch(
@@ -257,6 +258,7 @@ def test_update_statistics() -> None:
             "position": "qb",
             "week": "1",
             "season": "2026-2027-regular",
+            "test": False,
         }
         connection = MagicMock()
 
@@ -273,4 +275,30 @@ def test_update_statistics() -> None:
             mock_get_fantasy_stats.return_value,
             connection,
         )
+        mock_mark_job_complete.assert_called_once_with(jobId, connection)
+
+
+def test_update_statistics_health_check() -> None:
+    with patch("collector.create_job") as mock_create_job, patch(
+        "collector.get_fantasy_stats"
+    ) as mock_get_fantasy_stats, patch(
+        "collector.save_data_to_database"
+    ) as mock_save_data_to_database, patch(
+        "collector.mark_job_complete"
+    ) as mock_mark_job_complete:
+        jobId = str(uuid.uuid4())
+        message = {
+            "job_id": jobId,
+            "position": "",
+            "week": "",
+            "season": "",
+            "test": True,
+        }
+        connection = MagicMock()
+
+        update_statistics(message, connection)
+
+        mock_create_job.assert_called_once_with(jobId, connection)
+        mock_get_fantasy_stats.assert_not_called()
+        mock_save_data_to_database.assert_not_called()
         mock_mark_job_complete.assert_called_once_with(jobId, connection)

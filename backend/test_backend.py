@@ -15,6 +15,45 @@ def test_health_check():
     assert response.json() == {"status": "healthy"}
 
 
+def test_health_check():
+    mock_rabbit_channel = MagicMock()
+    mock_rabbit_connection = MagicMock()
+    mock_rabbit_connection.channel.return_value = mock_rabbit_channel
+    mock_postgres_cursor = MagicMock()
+    mock_postgres_connection = MagicMock()
+    mock_postgres_connection.cursor.return_value = mock_postgres_cursor
+    mock_postgres_cursor.fetchone.return_value = "success"
+
+    position = ""
+    week = ""
+    season = ""
+    with patch(
+        "main.get_rabbitmq_connection_with_retries"
+    ) as mock_get_rabbit_connection, patch(
+        "main.get_db_connection_with_retries"
+    ) as mock_get_db_connection:
+        mock_get_rabbit_connection.return_value = mock_rabbit_connection
+        mock_get_db_connection.return_value = mock_postgres_connection
+
+        response = client.get("/health")
+
+        _, kwargs = mock_rabbit_channel.basic_publish.call_args
+        message = json.loads(kwargs["body"])
+
+        assert message["position"] == position
+        assert message["week"] == week
+        assert message["season"] == season
+        assert message["test"] == True
+
+        query = "SELECT * FROM jobs WHERE job_id = %s"
+        mock_postgres_cursor.execute.assert_called_once_with(
+            query, (message["job_id"],)
+        )
+
+        assert response.status_code == 200
+        assert response.json() == {"status": "healthy"}
+
+
 def test_start_job():
     mock_channel = MagicMock()
     mock_connection = MagicMock()
@@ -119,7 +158,7 @@ def test_get_timestamp():
     mock_cursor = MagicMock()
     mock_connection = MagicMock()
     mock_connection.cursor.return_value = mock_cursor
-    mock_cursor.fetchone.return_value = [test_timestamp]
+    mock_cursor.fetchone.return_value = (test_timestamp,)
     app.state.postgres_connection = mock_connection
 
     with patch("main.get_db_connection_with_retries") as mock_get_db_connection:

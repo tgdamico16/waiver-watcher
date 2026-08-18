@@ -139,16 +139,19 @@ def get_fantasy_stats(position: str, week: str, season: str) -> Dict:
 
 def update_statistics(message: Dict, connection) -> None:
     create_job(message["job_id"], connection)
-    fantasy_stats = get_fantasy_stats(
-        message["position"], message["week"], message["season"]
-    )
-    save_data_to_database(
-        message["position"],
-        message["week"],
-        message["season"],
-        fantasy_stats,
-        connection,
-    )
+    if message["test"]:
+        print("test message received, not calling api")
+    else:
+        fantasy_stats = get_fantasy_stats(
+            message["position"], message["week"], message["season"]
+        )
+        save_data_to_database(
+            message["position"],
+            message["week"],
+            message["season"],
+            fantasy_stats,
+            connection,
+        )
     mark_job_complete(message["job_id"], connection)
 
 

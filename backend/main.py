@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -34,8 +35,25 @@ app.add_middleware(
 
 
 @app.get("/health")
+# async def health_check(request: Request):
 async def health_check():
-    return {"status": "healthy"}
+    try:
+        # rabbit_connection = request.app.state.rabbitmq_connection
+        # postgres_connection = request.app.state.postgres_connection
+        rabbit_connection = get_rabbitmq_connection_with_retries()
+        postgres_connection = get_db_connection_with_retries()
+        cursor = postgres_connection.cursor()
+
+        job_id = send_message_to_data_collector(rabbit_connection, "", "", "", True)
+        for _ in range(5):
+            time.sleep(1)
+            cursor.execute("SELECT * FROM jobs WHERE job_id = %s", (job_id,))
+            row = cursor.fetchone()
+            if row is not None:
+                return {"status": "healthy"}
+        return {"status": "unhealthy"}
+    except Exception:
+        return {"status": "unhealthy"}
 
 
 @app.get("/start-job")
