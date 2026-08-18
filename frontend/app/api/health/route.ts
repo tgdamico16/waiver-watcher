@@ -15,6 +15,8 @@ export async function GET() {
       return NextResponse.json({ status: "healthy" }, { status: 200 });
     }
     console.log("Application unhealthy, backend response not healthy");
+    console.log(backend_healthy);
+    console.log(backend_healthy_result);
     return NextResponse.json({ status: "unhealthy" }, { status: 500 });
   } catch (e) {
     console.log("Application unhealthy, error encountered");
