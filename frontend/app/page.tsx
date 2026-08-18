@@ -2,7 +2,8 @@
 
 import {
   getJobStatus,
-  getTop10Players,
+  getTimestamp,
+  getTop25Players,
   Player,
   startJob,
 } from "@/actions/actions";
@@ -17,12 +18,14 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 export default function Home() {
-  const [loading, setLoading] = useState<boolean>(false);
+  const [fetchingData, setFetchingData] = useState<boolean>(false);
+  const [callingAPI, setCallingAPI] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [position, setPosition] = useState<string>(POSITIONS[0].value);
   const [week, setWeek] = useState<string>(WEEKS[0].value);
   const [season, setSeason] = useState<string>(SEASONS[0].value);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   async function awaitJobCompletion(jobId: string) {
     let jobStatus = await getJobStatus(jobId);
@@ -32,18 +35,31 @@ export default function Home() {
     }
   }
 
-  async function handleMakeRequest() {
-    setLoading(true);
+  async function handleGetData(performInitialQuery: boolean = true) {
+    setFetchingData(true);
     try {
-      const jobId = await startJob(position, week, season);
-      await awaitJobCompletion(jobId);
+      let newPlayers = performInitialQuery
+        ? await getTop25Players(position, week, season)
+        : [];
+      let newTimestamp = performInitialQuery
+        ? await getTimestamp(position, week, season)
+        : null;
 
-      const top10Players = await getTop10Players();
-      setPlayers(top10Players);
+      if (newPlayers.length < 1) {
+        setCallingAPI(true);
+        const jobId = await startJob(position, week, season);
+        await awaitJobCompletion(jobId);
+        newPlayers = await getTop25Players(position, week, season);
+        newTimestamp = await getTimestamp(position, week, season);
+      }
+
+      setPlayers(newPlayers);
+      setLastUpdated(newTimestamp ? new Date(newTimestamp) : null);
     } catch (e) {
       setError(String(e));
     } finally {
-      setLoading(false);
+      setFetchingData(false);
+      setCallingAPI(false);
     }
   }
 
@@ -60,15 +76,32 @@ export default function Home() {
           setSeason={setSeason}
         />
         <Button
-          className="w-72 h-9 text-base"
-          onClick={handleMakeRequest}
-          disabled={loading}
+          className="w-74 h-9 text-base cursor-pointer"
+          onClick={() => handleGetData()}
+          disabled={fetchingData || callingAPI}
           data-testid="make-request-button"
         >
-          Make request
+          {callingAPI
+            ? "Calling API, this may take a minute..."
+            : fetchingData
+              ? "Loading..."
+              : "Go"}
         </Button>
         {error && <p>{error}</p>}
         {players.length > 0 && <PlayersTable players={players} />}
+        {lastUpdated && (
+          <div className="flex items-center gap-2">
+            <p>Last updated: {lastUpdated.toLocaleString()}</p>
+            <Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => handleGetData(false)}
+              disabled={fetchingData || callingAPI}
+            >
+              Update
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

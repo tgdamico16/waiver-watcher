@@ -1,3 +1,4 @@
+from datetime import datetime
 import time
 from typing import Dict, Union
 
@@ -47,9 +48,12 @@ def test_full_application():
         query_count += 1
         print(f"queried job status {query_count} times")
 
-    print("job complete, getting top 10 players")
-    top_10_players_response = hit_backend("top-10-players")
-    top_10_players = top_10_players_response["players"]
-    print("got top 10 players")
+    print("job complete, getting top 25 players & timestamp")
+    top_25_players_response = hit_backend("top-25-players", params)
+    top_25_players = top_25_players_response["players"]
+    print("got top 25 players")
+    timestamp_response = hit_backend("timestamp", params)
+    timestamp = timestamp_response["timestamp"]
+    datetime.fromisoformat(timestamp)
 
-    assert len(top_10_players) == 10 and "projected_points" in top_10_players[0]
+    assert len(top_25_players) == 25 and "projected_points" in top_25_players[0]

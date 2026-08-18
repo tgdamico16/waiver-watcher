@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from util import (
@@ -63,32 +65,70 @@ async def get_job_status(job_id: str):
         return {"status": "error", "error": str(e)}
 
 
-@app.get("/top-10-players")
-# async def get_top_10_players(request: Request):
-async def get_top_10_players():
+@app.get("/top-25-players")
+# async def get_top_25_players(request: Request, position: str, week: str, season: str):
+async def get_top_25_players(position: str, week: str, season: str):
     try:
         # connection = request.app.state.postgres_connection
         connection = get_db_connection_with_retries()
         cursor = connection.cursor()
-        cursor.execute("SELECT * FROM player_projections")
+        query = """
+            SELECT * FROM players
+            WHERE (
+                position = %s AND
+                week = %s AND
+                season = %s
+            )
+        """
+        cursor.execute(
+            query,
+            (position, week, season),
+        )
         players = cursor.fetchall()
 
-        sorted_players = sorted(players, key=lambda x: x[5], reverse=True)
-        top_10_players = sorted_players[:10]
-        top_10_players_obj = [
+        sorted_players = sorted(players, key=lambda x: x[7], reverse=True)
+        top_25_players = sorted_players[:25]
+        top_25_players_obj = [
             {
-                "id": player[0],
-                "first_name": player[1],
-                "last_name": player[2],
-                "position": player[3],
-                "team": player[4],
-                "projected_points": player[5],
+                "first_name": player[4],
+                "last_name": player[5],
+                "team": player[6],
+                "projected_points": player[7],
             }
-            for player in top_10_players
+            for player in top_25_players
         ]
-        return {"status": "success", "players": top_10_players_obj}
+        return {"status": "success", "players": top_25_players_obj}
     except Exception as e:
         print(players)
+        print(e)
+        return {"status": "error", "error": str(e)}
+
+
+@app.get("/timestamp")
+# async def get_timestamp(request: Request, position: str, week: str, season: str):
+async def get_timestamp(position: str, week: str, season: str):
+    try:
+        # connection = request.app.state.postgres_connection
+        connection = get_db_connection_with_retries()
+        cursor = connection.cursor()
+        query = """
+            SELECT updated_at FROM last_updated
+            WHERE (
+                position = %s AND
+                week = %s AND
+                season = %s
+            )
+        """
+        cursor.execute(
+            query,
+            (position, week, season),
+        )
+        row = cursor.fetchone()
+        timestamp = row[0].isoformat() if row is not None else None
+        print(timestamp)
+        return {"status": "success", "timestamp": timestamp}
+    except Exception as e:
+        print(row)
         print(e)
         return {"status": "error", "error": str(e)}
 

@@ -1,17 +1,20 @@
 import base64
 import json
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 import uuid
 
 from dotenv import load_dotenv
 from consumer import callback
 from collector import (
     create_job,
+    delete_existing_data,
     get_fantasy_stats,
+    insert_player_data,
     mark_job_complete,
     save_data_to_database,
     update_statistics,
+    update_timestamp,
 )
 
 load_dotenv()
@@ -92,31 +95,130 @@ def test_mark_job_complete():
     connection.commit.assert_called_once()
 
 
-def test_save_data_to_database():
-    row_to_insert = [(13349, "Patrick", "Mahomes", "QB", "KC", 13.039999961853027)]
+def test_delete_existing_data():
+    position = "qb"
+    week = "1"
+    season = "2026-2027-regular"
+    query = """
+        DELETE FROM players
+        WHERE (
+            position = %s AND
+            week = %s AND
+            season = %s
+        )
+    """
     connection = MagicMock()
 
-    with patch("collector.execute_values") as mock_execute_values:
-        save_data_to_database(test_fantasy_stats, connection)
+    delete_existing_data(position, week, season, connection)
 
-        delete_sql = "DELETE FROM player_projections WHERE 1=1"
-        connection.cursor().execute.assert_called_once_with(delete_sql)
+    connection.cursor().execute.assert_called_once_with(query, (position, week, season))
+    connection.commit.assert_called_once()
 
-        insert_sql = """
-        INSERT INTO player_projections (
+
+def test_insert_player_data():
+    position = "qb"
+    week = "1"
+    season = "2026-2027-regular"
+    insert_sql = """
+        INSERT INTO players (
             id,
+            position,
+            week,
+            season,
             first_name,
             last_name,
-            position,
             team,
             projected_points
         ) VALUES %s
     """
+    row_to_insert = [
+        (
+            13349,
+            position,
+            week,
+            season,
+            "Patrick",
+            "Mahomes",
+            "KC",
+            13.039999961853027,
+        )
+    ]
+    connection = MagicMock()
+
+    with patch("collector.execute_values") as mock_execute_values:
+        insert_player_data(position, week, season, test_fantasy_stats, connection)
+
         mock_execute_values.assert_called_once_with(
             connection.cursor(), insert_sql, row_to_insert
         )
 
+        connection.commit.assert_called_once()
+
+
+def test_update_timestamp():
+    position = "qb"
+    week = "1"
+    season = "2026-2027-regular"
+    delete_sql = """
+        DELETE FROM last_updated
+        WHERE (
+            position = %s AND
+            week = %s AND
+            season = %s
+        )
+    """
+    insert_sql = """
+        INSERT INTO last_updated (
+            position,
+            week,
+            season,
+            updated_at
+        ) VALUES (
+            %s,
+            %s,
+            %s,
+            %s
+        )
+    """
+    connection = MagicMock()
+
+    with patch("collector.datetime") as mock_datetime:
+        update_timestamp(position, week, season, connection)
+
+        assert connection.cursor().execute.call_count == 2
+        assert connection.cursor().execute.call_args_list == [
+            call(delete_sql, (position, week, season)),
+            call(
+                insert_sql,
+                (position, week, season, mock_datetime.now.return_value),
+            ),
+        ]
+
         assert connection.commit.call_count == 2
+
+
+def test_save_data_to_database() -> None:
+    with patch("collector.delete_existing_data") as mock_delete_existing_data, patch(
+        "collector.insert_player_data"
+    ) as mock_insert_player_data, patch(
+        "collector.update_timestamp"
+    ) as mock_update_timestamp:
+        position = "qb"
+        week = "1"
+        season = "2026-2027-regular"
+        connection = MagicMock()
+
+        save_data_to_database(position, week, season, test_fantasy_stats, connection)
+
+        mock_delete_existing_data.assert_called_once_with(
+            position, week, season, connection
+        )
+        mock_insert_player_data.assert_called_once_with(
+            position, week, season, test_fantasy_stats, connection
+        )
+        mock_update_timestamp.assert_called_once_with(
+            position, week, season, connection
+        )
 
 
 def test_get_fantasy_stats():
@@ -165,6 +267,10 @@ def test_update_statistics() -> None:
             message["position"], message["week"], message["season"]
         )
         mock_save_data_to_database.assert_called_once_with(
-            mock_get_fantasy_stats.return_value, connection
+            message["position"],
+            message["week"],
+            message["season"],
+            mock_get_fantasy_stats.return_value,
+            connection,
         )
         mock_mark_job_complete.assert_called_once_with(jobId, connection)

@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timezone
 import json
 import os
 from typing import Dict
@@ -35,18 +36,32 @@ def mark_job_complete(job_id: str, connection) -> None:
     print("marked job complete")
 
 
-def save_data_to_database(fantasy_stats: Dict, connection) -> None:
+def delete_existing_data(position: str, week: str, season: str, connection) -> None:
     print("deleting existing data...")
-    connection.cursor().execute("DELETE FROM player_projections WHERE 1=1")
+    query = """
+        DELETE FROM players
+        WHERE (
+            position = %s AND
+            week = %s AND
+            season = %s
+        )
+    """
+    connection.cursor().execute(query, (position, week, season))
     connection.commit()
     print("existing data deleted")
 
+
+def insert_player_data(
+    position: str, week: str, season: str, fantasy_stats: Dict, connection
+):
     query = """
-        INSERT INTO player_projections (
+        INSERT INTO players (
             id,
+            position,
+            week,
+            season,
             first_name,
             last_name,
-            position,
             team,
             projected_points
         ) VALUES %s
@@ -54,9 +69,11 @@ def save_data_to_database(fantasy_stats: Dict, connection) -> None:
     rows_to_insert = [
         (
             projection["player"]["id"],
+            position,
+            week,
+            season,
             projection["player"]["firstName"],
             projection["player"]["lastName"],
-            projection["player"]["position"],
             projection["team"]["abbreviation"],
             projection["fantasyPoints"][0]["points"],
         )
@@ -66,6 +83,46 @@ def save_data_to_database(fantasy_stats: Dict, connection) -> None:
     execute_values(connection.cursor(), query, rows_to_insert)
     connection.commit()
     print("data saved to database")
+
+
+def update_timestamp(position: str, week: str, season: str, connection):
+    print("Updating timestamp...")
+    query = """
+        DELETE FROM last_updated
+        WHERE (
+            position = %s AND
+            week = %s AND
+            season = %s
+        )
+    """
+    connection.cursor().execute(query, (position, week, season))
+    connection.commit()
+    query = """
+        INSERT INTO last_updated (
+            position,
+            week,
+            season,
+            updated_at
+        ) VALUES (
+            %s,
+            %s,
+            %s,
+            %s
+        )
+    """
+    connection.cursor().execute(
+        query, (position, week, season, datetime.now(timezone.utc))
+    )
+    connection.commit()
+    print("existing data deleted")
+
+
+def save_data_to_database(
+    position: str, week: str, season: str, fantasy_stats: Dict, connection
+) -> None:
+    delete_existing_data(position, week, season, connection)
+    insert_player_data(position, week, season, fantasy_stats, connection)
+    update_timestamp(position, week, season, connection)
 
 
 def get_fantasy_stats(position: str, week: str, season: str) -> Dict:
@@ -85,7 +142,13 @@ def update_statistics(message: Dict, connection) -> None:
     fantasy_stats = get_fantasy_stats(
         message["position"], message["week"], message["season"]
     )
-    save_data_to_database(fantasy_stats, connection)
+    save_data_to_database(
+        message["position"],
+        message["week"],
+        message["season"],
+        fantasy_stats,
+        connection,
+    )
     mark_job_complete(message["job_id"], connection)
 
 

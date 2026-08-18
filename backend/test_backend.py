@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import json
 from unittest.mock import MagicMock, patch
 import uuid
@@ -58,40 +59,78 @@ def test_get_job_status():
         assert response.json() == {"status": "success", "job_status": "complete"}
 
 
-def test_get_top_10_players():
-    test_top_10_players_tuple = [
+def test_get_top_25_players():
+    test_top_25_players_tuple = [
         (
             1,
+            "qb",
+            "1",
+            "2026-2027-regular",
             "Patrick",
             "Mahomes",
-            "QB",
             "KC",
             100,
         )
     ]
-    test_top_10_players_obj = [
+    test_top_25_players_obj = [
         {
-            "id": 1,
             "first_name": "Patrick",
             "last_name": "Mahomes",
-            "position": "QB",
             "team": "KC",
             "projected_points": 100,
         },
     ]
+    position = "qb"
+    week = "1"
+    season = "2026-2027-regular"
 
     mock_cursor = MagicMock()
     mock_connection = MagicMock()
     mock_connection.cursor.return_value = mock_cursor
-    mock_cursor.fetchall.return_value = test_top_10_players_tuple
+    mock_cursor.fetchall.return_value = test_top_25_players_tuple
 
     with patch("main.get_db_connection_with_retries") as mock_get_db_connection:
         mock_get_db_connection.return_value = mock_connection
 
-        response = client.get("/top-10-players")
+        response = client.get(
+            f"/top-25-players?position={position}&week={week}&season={season}"
+        )
 
         assert response.status_code == 200
         assert response.json() == {
             "status": "success",
-            "players": test_top_10_players_obj,
+            "players": test_top_25_players_obj,
+        }
+
+
+def test_get_timestamp():
+    test_timestamp = datetime.now(timezone.utc)
+    position = "qb"
+    week = "1"
+    season = "2026-2027-regular"
+    query = """
+            SELECT updated_at FROM last_updated
+            WHERE (
+                position = %s AND
+                week = %s AND
+                season = %s
+            )
+        """
+    mock_cursor = MagicMock()
+    mock_connection = MagicMock()
+    mock_connection.cursor.return_value = mock_cursor
+    mock_cursor.fetchone.return_value = [test_timestamp]
+    app.state.postgres_connection = mock_connection
+
+    with patch("main.get_db_connection_with_retries") as mock_get_db_connection:
+        mock_get_db_connection.return_value = mock_connection
+        response = client.get(
+            f"/timestamp?position={position}&week={week}&season={season}"
+        )
+
+        mock_cursor.execute.assert_called_once_with(query, (position, week, season))
+        assert response.status_code == 200
+        assert response.json() == {
+            "status": "success",
+            "timestamp": test_timestamp.isoformat(),
         }
